@@ -26,12 +26,12 @@
 #define X_JOY_PIN 26  
 #define Y_JOY_PIN 27  
 #define BUTTON_JOY_PIN 22 
-#define MOV_TOLERANCE 150
+#define MOV_TOLERANCE 200
 
-#define LIM_MAX_X 56 
+#define LIM_MAX_X 52 
 #define LIM_INIT_X 4
 
-#define LIM_MAX_Y 116 
+#define LIM_MAX_Y 110
 #define LIM_INIT_Y 4
 
 
@@ -61,27 +61,32 @@ void draw_square(uint pos_x, uint pos_y);
 
 
 void main() {
+
+  // Configurações básicas
   setup_buttons();
   setup_leds();
   setup_joystick();
   setup_i2c_display(&ssd);
 
-
   ssd1306_rect(&ssd, 3, 3, 122, 60, 1, 0); // Desenha ou um retângulo
 
   while (true) {
+    // Capta as posições analogicas dos Joysticks
     adc_select_input(0);
     joy_x = adc_read();
     adc_select_input(1);
     joy_y = adc_read();
 
+    // Altera o brilho dos LEDS via PWM
     set_led_brightness(joy_x, joy_y);
+    // Faz a animação de movimento do quadrado
     draw_square(joy_x, joy_y);
   }
 }
 
 
 void setup_buttons() {
+  // Configuro meus botões e suas interrupções com uma função de callback
   gpio_init(BUTTON_A_PIN);
   gpio_set_dir(BUTTON_A_PIN, GPIO_OUT);
   gpio_pull_up(BUTTON_A_PIN);
@@ -100,6 +105,7 @@ void setup_leds() {
   gpio_set_dir(LED_G_PIN, GPIO_OUT);
   gpio_put(LED_G_PIN, false);
 
+  // Configuro os LEDS Azul e Vermelho para funcionarem por meio de PWM
   gpio_set_function(LED_B_PIN, GPIO_FUNC_PWM);
   slice_1 = pwm_gpio_to_slice_num(LED_B_PIN);
   pwm_set_clkdiv(slice_1, CLK_DIV);
@@ -116,6 +122,7 @@ void setup_leds() {
 }
 
 void setup_i2c_display(ssd1306_t *ssd) {
+  // Configuração da comunição serial para utilizar o display SSD1306
   i2c_init(I2C_PORT, 400000);
   gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C);
   gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C);
@@ -143,16 +150,19 @@ void set_led_brightness(uint pos_x, uint pos_y) {
 }
 
 void button_irq_handler(uint gpio, uint32_t events) {
+  // Uso de Deboucing para evitar Ruídos
   uint32_t current_time = to_ms_since_boot(get_absolute_time());
   if (current_time - event_time > 200) {  
     event_time = current_time;
 
+    // Ativa ou desativa a mudança de brilho dos LEDS via PWM
     if (gpio == BUTTON_A_PIN) {
       pwm_enable = !pwm_enable;
       pwm_set_enabled(slice_1, pwm_enable);
       pwm_set_enabled(slice_2, pwm_enable);
     }
     
+    // Ativa ou Desativa o LED VERDE e as bordas do Display
     if (gpio == BUTTON_JOY_PIN) {
       gpio_put(LED_G_PIN, !(gpio_get(LED_G_PIN)));
       ssd1306_rect(&ssd, 3, 3, 122, 60, !(gpio_get(LED_G_PIN)), 0); // Desenha ou Apaga um retângulo
@@ -167,16 +177,17 @@ void draw_square(uint pos_x, uint pos_y) {
   uint mov_div_x = (WRAP * 2) / SSD_HEIGHT;
   uint mov_div_y = (WRAP * 2) / SSD_WIDTH;
 
-
+  // Apaga o quadrado anterior
   ssd1306_rect(&ssd, current_pos_x, current_pos_y, 8, 8, 0, 1);
 
+  // Verifica se o quadrado está dentro dos limites
   if ((uint8_t)(pos_x / mov_div_x) < LIM_MAX_X && (uint8_t)(pos_x / mov_div_x) > LIM_INIT_X)
     current_pos_x = (uint8_t)(pos_x / mov_div_x);
 
   if ((uint8_t)(pos_y / mov_div_y) < LIM_MAX_Y && (uint8_t)(pos_y / mov_div_y) > LIM_INIT_Y)    
     current_pos_y = (uint8_t)(pos_y / mov_div_y);
 
-
+  // Desenha um novo quadrado
   ssd1306_rect(&ssd, current_pos_x, current_pos_y, 8, 8, 1, 1);
   ssd1306_send_data(&ssd);
 }
