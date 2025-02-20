@@ -27,7 +27,13 @@
 #define Y_JOY_PIN 27  
 #define BUTTON_JOY_PIN 22 
 #define MOV_TOLERANCE 150
-#define LIMIT_X 
+
+#define LIM_MAX_X 56 
+#define LIM_INIT_X 4
+
+#define LIM_MAX_Y 116 
+#define LIM_INIT_Y 4
+
 
 // Definições de Botões e LEDS
 #define BUTTON_A_PIN 5 
@@ -59,6 +65,9 @@ void main() {
   setup_leds();
   setup_joystick();
   setup_i2c_display(&ssd);
+
+
+  ssd1306_rect(&ssd, 3, 3, 122, 60, 1, 0); // Desenha ou um retângulo
 
   while (true) {
     adc_select_input(0);
@@ -146,6 +155,7 @@ void button_irq_handler(uint gpio, uint32_t events) {
     
     if (gpio == BUTTON_JOY_PIN) {
       gpio_put(LED_G_PIN, !(gpio_get(LED_G_PIN)));
+      ssd1306_rect(&ssd, 3, 3, 122, 60, !(gpio_get(LED_G_PIN)), 0); // Desenha ou Apaga um retângulo
     }
   }
 }
@@ -160,8 +170,11 @@ void draw_square(uint pos_x, uint pos_y) {
 
   ssd1306_rect(&ssd, current_pos_x, current_pos_y, 8, 8, 0, 1);
 
-  current_pos_x = (uint8_t)(pos_x / mov_div_x);
-  current_pos_y = (uint8_t)(pos_y / mov_div_y);
+  if ((uint8_t)(pos_x / mov_div_x) < LIM_MAX_X && (uint8_t)(pos_x / mov_div_x) > LIM_INIT_X)
+    current_pos_x = (uint8_t)(pos_x / mov_div_x);
+
+  if ((uint8_t)(pos_y / mov_div_y) < LIM_MAX_Y && (uint8_t)(pos_y / mov_div_y) > LIM_INIT_Y)    
+    current_pos_y = (uint8_t)(pos_y / mov_div_y);
 
 
   ssd1306_rect(&ssd, current_pos_x, current_pos_y, 8, 8, 1, 1);
